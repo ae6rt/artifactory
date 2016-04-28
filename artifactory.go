@@ -9,6 +9,17 @@ import (
 	"time"
 )
 
+func NewClient(u, p, url string) Client {
+	return DefaultClient{
+		user:     u,
+		password: p,
+		url:      url,
+		client: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+	}
+}
+
 func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatus, error) {
 	repoConfig := LocalRepositoryConfiguration{
 		Key:                     repositoryID,
@@ -54,13 +65,72 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 	return nil, nil
 }
 
-func NewClient(u, p, url string) Client {
-	return DefaultClient{
-		user:     u,
-		password: p,
-		url:      url,
-		client: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+// GetVirtualRepositoryConfiguration retrieves virtual repository configuration.  Whether an error is returned or not
+// is driven by whether a retry framework shuuld retry such a call.
+func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (VirtualRepositoryConfiguration, error) {
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/repositories/%s", c.url, repositoryID), nil)
+	if err != nil {
+		return VirtualRepositoryConfiguration{}, err
 	}
+
+	req.Header.Set("Accept", "application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json")
+	req.SetBasicAuth(c.user, c.password)
+
+	response, err := c.client.Do(req)
+	if err != nil {
+		return VirtualRepositoryConfiguration{}, err
+	}
+	defer response.Body.Close()
+
+	data, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return VirtualRepositoryConfiguration{}, err
+	}
+
+	if response.StatusCode/100 == 5 {
+		return VirtualRepositoryConfiguration{}, http500{data}
+	}
+
+	var virtualRepository VirtualRepositoryConfiguration
+	if err := json.Unmarshal(data, &virtualRepository); err != nil {
+		return VirtualRepositoryConfiguration{}, err
+	}
+
+	if response.StatusCode != 200 {
+		return VirtualRepositoryConfiguration{HTTPStatus: &HTTPStatus{StatusCode: response.StatusCode, Entity: data}}, nil
+	}
+
+	return virtualRepository, nil
+}
+
+func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) {
+
+	req, err := http.NewRequest("HEAD", fmt.Sprintf("%s/api/repositories/%s", c.url, repositoryID), nil)
+	if err != nil {
+		return false, err
+	}
+
+	req.Header.Set("Accept", "application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json")
+	req.SetBasicAuth(c.user, c.password)
+
+	response, err := c.client.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode/100 == 5 {
+		return false, http500{}
+	}
+
+	if response.StatusCode != 200 {
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (h http500) Error() string {
+	return string(h.httpEntity)
 }

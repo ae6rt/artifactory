@@ -2,8 +2,14 @@ package artifactory
 
 import "net/http"
 
+type http500 struct {
+	httpEntity []byte
+}
+
 type Client interface {
 	CreateSnapshotRepository(string) (*HTTPStatus, error)
+	GetVirtualRepositoryConfiguration(string) (VirtualRepositoryConfiguration, error)
+	LocalRepositoryExists(string) (bool, error)
 }
 
 type HTTPStatus struct {
@@ -28,4 +34,11 @@ type LocalRepositoryConfiguration struct {
 	HandleSnapshots         bool   `json:"handleSnapshots"`
 	MaxUniqueSnapshots      int    `json:"maxUniqueSnapshots"`
 	SnapshotVersionBehavior string `json:"snapshotVersionBehavior"`
+}
+
+type VirtualRepositoryConfiguration struct {
+	Key          string   `json:"key"`
+	RClass       string   `json:"rclass"`
+	Repositories []string `json:"repositories"`
+	HTTPStatus   *HTTPStatus
 }
