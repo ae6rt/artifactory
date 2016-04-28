@@ -1,6 +1,7 @@
 package artifactory
 
 import (
+	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -28,7 +29,7 @@ func TestCreateSnapshot(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	client := NewClient("u", "p", testServer.URL)
+	client := NewClient("u", "p", testServer.URL, &tls.Config{})
 	_, err := client.CreateSnapshotRepository("test-repo")
 	if err != nil {
 		t.Fatal(err)

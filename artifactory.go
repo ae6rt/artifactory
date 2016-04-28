@@ -2,6 +2,7 @@ package artifactory
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,13 +10,15 @@ import (
 	"time"
 )
 
-func NewClient(u, p, url string) Client {
+func NewClient(u, p, url string, tlsConfig *tls.Config) Client {
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	return DefaultClient{
 		user:     u,
 		password: p,
 		url:      url,
 		client: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout:   10 * time.Second,
+			Transport: transport,
 		},
 	}
 }
