@@ -184,7 +184,15 @@ func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepos
 		return &HTTPStatus{}, err
 	}
 	defer response.Body.Close()
-	// check response code
+
+	data, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 200 {
+		return &HTTPStatus{response.StatusCode, data}, nil
+	}
 	return nil, nil
 }
 
