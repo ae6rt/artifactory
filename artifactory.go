@@ -152,6 +152,39 @@ func (c DefaultClient) LocalRepositoryIsInGroup(virtualRepositoryID, localReposi
 }
 
 func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
+	r, err := c.GetVirtualRepositoryConfiguration(virtualRepositoryID)
+	if err != nil {
+		return nil, err
+	}
+	if r.HTTPStatus != nil {
+		return r.HTTPStatus, nil
+	}
+
+	if contains(r.Repositories, localRepositoryID) {
+		return nil, nil
+	}
+
+	r.Repositories = append(r.Repositories, localRepositoryID)
+
+	serial, err := json.Marshal(&r)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/repositories/%s", c.url, localRepositoryID), bytes.NewBuffer(serial))
+	if err != nil {
+		return &HTTPStatus{}, err
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-type", "application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json")
+	req.SetBasicAuth(c.user, c.password)
+
+	response, err := c.client.Do(req)
+	if err != nil {
+		return &HTTPStatus{}, err
+	}
+	defer response.Body.Close()
+	// check response code
 	return nil, nil
 }
 
@@ -161,4 +194,13 @@ func (c DefaultClient) RemoveLocalRepositoryFromGroup(virtualRepositoryID, local
 
 func (h http500) Error() string {
 	return string(h.httpEntity)
+}
+
+func contains(arr []string, value string) bool {
+	for _, v := range arr {
+		if v == value {
+			return true
+		}
+	}
+	return false
 }
