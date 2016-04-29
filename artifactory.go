@@ -134,29 +134,29 @@ func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) 
 	return true, nil
 }
 
-func (c DefaultClient) LocalRepositoryIsInGroup(virtualRepositoryID, localRepositoryID string) (bool, error) {
+func (c DefaultClient) LocalRepositoryIsInGroup(virtualRepositoryID, localRepositoryID string) (BooleanResponse, error) {
 	config, err := c.GetVirtualRepositoryConfiguration(virtualRepositoryID)
 	if err != nil {
-		return false, err // OK?
+		return BooleanResponse{}, err
 	}
 	if config.HTTPStatus != nil {
-		return false, fmt.Errorf("%+v\n", config.HTTPStatus) // don't like this.  need to convey http status in the returned business object
+		return BooleanResponse{}, fmt.Errorf("%+v\n", config.HTTPStatus)
 	}
 
 	for _, k := range config.Repositories {
 		if k == localRepositoryID {
-			return true, nil
+			return BooleanResponse{Result: true}, nil
 		}
 	}
-	return false, nil
+	return BooleanResponse{Result: false}, nil
 }
 
-func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepositoryID string) error {
-	return nil
+func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
+	return nil, nil
 }
 
-func (c DefaultClient) RemoveLocalRepositoryFromGroup(virtualRepositoryID, localRepositoryID string) error {
-	return nil
+func (c DefaultClient) RemoveLocalRepositoryFromGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
+	return nil, nil
 }
 
 func (h http500) Error() string {

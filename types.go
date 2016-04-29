@@ -10,9 +10,9 @@ type Client interface {
 	CreateSnapshotRepository(string) (*HTTPStatus, error)
 	GetVirtualRepositoryConfiguration(string) (VirtualRepositoryConfiguration, error)
 	LocalRepositoryExists(string) (bool, error)
-	LocalRepositoryIsInGroup(string, string) (bool, error)
-	AddLocalRepositoryToGroup(string, string) error
-	RemoveLocalRepositoryFromGroup(string, string) error
+	LocalRepositoryIsInGroup(string, string) (BooleanResponse, error)
+	AddLocalRepositoryToGroup(string, string) (*HTTPStatus, error)
+	RemoveLocalRepositoryFromGroup(string, string) (*HTTPStatus, error)
 }
 
 type HTTPStatus struct {
@@ -44,4 +44,9 @@ type VirtualRepositoryConfiguration struct {
 	RClass       string   `json:"rclass"`
 	Repositories []string `json:"repositories"`
 	HTTPStatus   *HTTPStatus
+}
+
+type BooleanResponse struct {
+	Result     bool
+	HTTPStatus *HTTPStatus
 }
