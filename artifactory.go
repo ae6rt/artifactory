@@ -134,6 +134,31 @@ func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) 
 	return true, nil
 }
 
+func (c DefaultClient) LocalRepositoryIsInGroup(virtualRepositoryID, localRepositoryID string) (bool, error) {
+	config, err := c.GetVirtualRepositoryConfiguration(virtualRepositoryID)
+	if err != nil {
+		return false, err // OK?
+	}
+	if config.HTTPStatus != nil {
+		return false, fmt.Errorf("%+v\n", config.HTTPStatus) // don't like this.  need to convey http status in the returned business object
+	}
+
+	for _, k := range config.Repositories {
+		if k == localRepositoryID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepositoryID string) error {
+	return nil
+}
+
+func (c DefaultClient) RemoveLocalRepositoryFromGroup(virtualRepositoryID, localRepositoryID string) error {
+	return nil
+}
+
 func (h http500) Error() string {
 	return string(h.httpEntity)
 }

@@ -10,6 +10,9 @@ type Client interface {
 	CreateSnapshotRepository(string) (*HTTPStatus, error)
 	GetVirtualRepositoryConfiguration(string) (VirtualRepositoryConfiguration, error)
 	LocalRepositoryExists(string) (bool, error)
+	LocalRepositoryIsInGroup(string, string) (bool, error)
+	AddLocalRepositoryToGroup(string, string) error
+	RemoveLocalRepositoryFromGroup(string, string) error
 }
 
 type HTTPStatus struct {
