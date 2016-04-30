@@ -190,12 +190,33 @@ func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepos
 
 	r.Repositories = append(r.Repositories, localRepositoryID)
 
+	return c.updateVirtualRepository(r)
+}
+
+func (c DefaultClient) RemoveLocalRepositoryFromGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
+	return nil, nil
+}
+
+func (h http500) Error() string {
+	return string(h.httpEntity)
+}
+
+func contains(arr []string, value string) bool {
+	for _, v := range arr {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
+
+func (c DefaultClient) updateVirtualRepository(r VirtualRepositoryConfiguration) (*HTTPStatus, error) {
 	serial, err := json.Marshal(&r)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/repositories/%s", c.url, virtualRepositoryID), bytes.NewBuffer(serial))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/repositories/%s", c.url, r.Key), bytes.NewBuffer(serial))
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
@@ -222,21 +243,4 @@ func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepos
 		return &HTTPStatus{response.StatusCode, data}, nil
 	}
 	return nil, nil
-}
-
-func (c DefaultClient) RemoveLocalRepositoryFromGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
-	return nil, nil
-}
-
-func (h http500) Error() string {
-	return string(h.httpEntity)
-}
-
-func contains(arr []string, value string) bool {
-	for _, v := range arr {
-		if v == value {
-			return true
-		}
-	}
-	return false
 }
