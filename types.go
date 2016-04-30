@@ -23,6 +23,7 @@ type HTTPStatus struct {
 type DefaultClient struct {
 	user     string
 	password string
+	apiKey   string
 	url      string
 	client   *http.Client
 }

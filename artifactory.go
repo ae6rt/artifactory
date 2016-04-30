@@ -10,11 +10,23 @@ import (
 	"time"
 )
 
-func NewClient(u, p, url string, tlsConfig *tls.Config) Client {
+func NewApiKeyClient(apiKey, url string, tlsConfig *tls.Config) Client {
 	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	return DefaultClient{
-		user:     u,
-		password: p,
+		apiKey: apiKey,
+		url:    url,
+		client: &http.Client{
+			Timeout:   10 * time.Second,
+			Transport: transport,
+		},
+	}
+}
+
+func NewBasicAuthClient(username, password, url string, tlsConfig *tls.Config) Client {
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	return DefaultClient{
+		user:     username,
+		password: password,
 		url:      url,
 		client: &http.Client{
 			Timeout:   10 * time.Second,
@@ -47,7 +59,11 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-type", "application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json")
-	req.SetBasicAuth(c.user, c.password)
+	if c.apiKey != "" {
+		req.Header.Set("X-JFrog-Art-Api", c.password)
+	} else {
+		req.SetBasicAuth(c.user, c.password)
+	}
 
 	response, err := c.client.Do(req)
 
@@ -78,7 +94,11 @@ func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (V
 	}
 
 	req.Header.Set("Accept", "application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json")
-	req.SetBasicAuth(c.user, c.password)
+	if c.apiKey != "" {
+		req.Header.Set("X-JFrog-Art-Api", c.password)
+	} else {
+		req.SetBasicAuth(c.user, c.password)
+	}
 
 	response, err := c.client.Do(req)
 	if err != nil {
@@ -115,7 +135,11 @@ func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) 
 	}
 
 	req.Header.Set("Accept", "application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json")
-	req.SetBasicAuth(c.user, c.password)
+	if c.apiKey != "" {
+		req.Header.Set("X-JFrog-Art-Api", c.password)
+	} else {
+		req.SetBasicAuth(c.user, c.password)
+	}
 
 	response, err := c.client.Do(req)
 	if err != nil {
@@ -177,7 +201,11 @@ func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepos
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-type", "application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json")
-	req.SetBasicAuth(c.user, c.password)
+	if c.apiKey != "" {
+		req.Header.Set("X-JFrog-Art-Api", c.password)
+	} else {
+		req.SetBasicAuth(c.user, c.password)
+	}
 
 	response, err := c.client.Do(req)
 	if err != nil {
