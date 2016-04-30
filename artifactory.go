@@ -171,7 +171,7 @@ func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepos
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/repositories/%s", c.url, localRepositoryID), bytes.NewBuffer(serial))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/repositories/%s", c.url, virtualRepositoryID), bytes.NewBuffer(serial))
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
