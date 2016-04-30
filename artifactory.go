@@ -60,7 +60,7 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-type", "application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json")
 	if c.apiKey != "" {
-		req.Header.Set("X-JFrog-Art-Api", c.password)
+		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
 	} else {
 		req.SetBasicAuth(c.user, c.password)
 	}
@@ -95,7 +95,7 @@ func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (V
 
 	req.Header.Set("Accept", "application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json")
 	if c.apiKey != "" {
-		req.Header.Set("X-JFrog-Art-Api", c.password)
+		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
 	} else {
 		req.SetBasicAuth(c.user, c.password)
 	}
@@ -136,7 +136,7 @@ func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) 
 
 	req.Header.Set("Accept", "application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json")
 	if c.apiKey != "" {
-		req.Header.Set("X-JFrog-Art-Api", c.password)
+		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
 	} else {
 		req.SetBasicAuth(c.user, c.password)
 	}
@@ -202,7 +202,7 @@ func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepos
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-type", "application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json")
 	if c.apiKey != "" {
-		req.Header.Set("X-JFrog-Art-Api", c.password)
+		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
 	} else {
 		req.SetBasicAuth(c.user, c.password)
 	}
