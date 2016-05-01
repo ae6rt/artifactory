@@ -35,6 +35,7 @@ type LocalRepositoryConfiguration struct {
 	Description             string      `json:"description"`
 	RepoLayoutRef           string      `json:"repoLayoutRef"`
 	HandleSnapshots         bool        `json:"handleSnapshots"`
+	HandleReleases          bool        `json:"handleReleases"`
 	MaxUniqueSnapshots      int         `json:"maxUniqueSnapshots"`
 	SnapshotVersionBehavior string      `json:"snapshotVersionBehavior"`
 	HTTPStatus              *HTTPStatus `json:"-"`

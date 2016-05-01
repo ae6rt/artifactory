@@ -42,6 +42,7 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 		PackageType:             "maven",
 		RepoLayoutRef:           "maven-2-default",
 		HandleSnapshots:         true,
+		HandleReleases:          false,
 		MaxUniqueSnapshots:      0,
 		SnapshotVersionBehavior: "unique",
 	}
