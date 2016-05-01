@@ -38,7 +38,7 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 	repoConfig := LocalRepositoryConfiguration{
 		Key:                     repositoryID,
 		RClass:                  "local",
-		Notes:                   "Created via automation with Artifactory Go client [" + time.Now().String() + "]",
+		Notes:                   "Created via automation with https://github.com/ae6rt/artifactory Go client [" + time.Now().String() + "]",
 		PackageType:             "maven",
 		RepoLayoutRef:           "maven-2-default",
 		HandleSnapshots:         true,
@@ -66,7 +66,6 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 	}
 
 	response, err := c.client.Do(req)
-
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
@@ -115,16 +114,13 @@ func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (V
 		return VirtualRepositoryConfiguration{}, http500{data}
 	}
 
-	var virtualRepository VirtualRepositoryConfiguration
-	if err := json.Unmarshal(data, &virtualRepository); err != nil {
-		return VirtualRepositoryConfiguration{}, err
-	}
-
 	if response.StatusCode != 200 {
 		return VirtualRepositoryConfiguration{HTTPStatus: &HTTPStatus{StatusCode: response.StatusCode, Entity: data}}, nil
 	}
 
-	return virtualRepository, nil
+	var virtualRepository VirtualRepositoryConfiguration
+	err = json.Unmarshal(data, &virtualRepository)
+	return virtualRepository, err
 }
 
 func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) {
@@ -146,8 +142,8 @@ func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) 
 		return false, err
 	}
 	defer response.Body.Close()
-	data, err := ioutil.ReadAll(response.Body)
 
+	data, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return false, err
 	}
@@ -194,6 +190,10 @@ func (c DefaultClient) RemoveRepository(repositoryID string) (*HTTPStatus, error
 }
 
 func (c DefaultClient) RemoveItemFromRepository(repositoryID, item string) (*HTTPStatus, error) {
+	if item == "" {
+		panic("Refusing to remove an item of zero length.")
+	}
+
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/api/repositories/%s/%s", c.url, repositoryID, item), nil)
 	if err != nil {
 		return &HTTPStatus{}, err
