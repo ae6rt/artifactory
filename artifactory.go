@@ -23,14 +23,13 @@ func NewApiKeyClient(apiKey, url string, tlsConfig *tls.Config) Client {
 }
 
 func NewBasicAuthClient(username, password, url string, tlsConfig *tls.Config) Client {
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
 	return DefaultClient{
 		user:     username,
 		password: password,
 		url:      url,
 		client: &http.Client{
 			Timeout:   10 * time.Second,
-			Transport: transport,
+			Transport: &http.Transport{TLSClientConfig: tlsConfig},
 		},
 	}
 }
@@ -194,7 +193,21 @@ func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepos
 }
 
 func (c DefaultClient) RemoveLocalRepositoryFromGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
-	return nil, nil
+	r, err := c.GetVirtualRepositoryConfiguration(virtualRepositoryID)
+	if err != nil {
+		return nil, err
+	}
+	if r.HTTPStatus != nil {
+		return r.HTTPStatus, nil
+	}
+
+	if !contains(r.Repositories, localRepositoryID) {
+		return nil, nil
+	}
+
+	r.Repositories = remove(r.Repositories, localRepositoryID)
+
+	return c.updateVirtualRepository(r)
 }
 
 func (h http500) Error() string {
@@ -208,6 +221,16 @@ func contains(arr []string, value string) bool {
 		}
 	}
 	return false
+}
+
+func remove(arr []string, value string) []string {
+	var t []string
+	for _, v := range arr {
+		if v != value {
+			t = append(t, value)
+		}
+	}
+	return t
 }
 
 func (c DefaultClient) updateVirtualRepository(r VirtualRepositoryConfiguration) (*HTTPStatus, error) {
