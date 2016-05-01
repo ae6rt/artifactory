@@ -1,31 +1,43 @@
-package artifactory
+package artifactory_test
 
 import (
-	"crypto/tls"
+	"bytes"
 	"net/http"
-	"net/http/httptest"
 	"testing"
+
+	"github.com/ae6rt/artifactory"
 )
 
 func TestRemoveItemFromRepo(t *testing.T) {
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "DELETE" {
-			t.Fatalf("wanted DELETE but found %s\n", r.Method)
-		}
-		url := *r.URL
-		if url.Path != "/api/repositories/test-repo/item" {
-			t.Fatalf("want /api/repositories/test-repo/item but found %s\n", url.Path)
-		}
-		if r.Header.Get("Authorization") != "Basic dTpw" {
-			t.Fatalf("Want  Basic dTpw but found %s\n", r.Header.Get("Authorization"))
-		}
-		w.WriteHeader(200)
-	}))
-	defer testServer.Close()
+	doer := TestDoer{response: &http.Response{
+		StatusCode: 200,
+		Body:       nopCloser{bytes.NewBufferString("")},
+	}}
+	client := artifactory.NewClient(artifactory.Config{
+		Username: "u",
+		Password: "p",
+		BaseURL:  "http://host:port",
+		Doer:     &doer,
+	})
 
-	client := NewBasicAuthClient("u", "p", testServer.URL, &tls.Config{})
-	_, err := client.RemoveItemFromRepository("test-repo", "item")
+	response, err := client.RemoveItemFromRepository("test-repo", "item")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if response != nil {
+		t.Fatal("Unexpected response")
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if doer.req.Method != "DELETE" {
+		t.Fatalf("Want DELETE but got %s\n", doer.req.Method)
+	}
+	if doer.req.URL.Path != "/api/repositories/test-repo/item" {
+		t.Fatalf("Want /api/repositories/test-repo/item but got %s\n", doer.req.URL)
+	}
+	if doer.req.Header.Get("Authorization") == "" {
+		t.Fatal("Want Basic Auth")
 	}
 }

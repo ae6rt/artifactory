@@ -1,9 +1,29 @@
 package artifactory
 
-import "net/http"
+import (
+	"log"
+	"net/http"
+)
 
 type http500 struct {
 	httpEntity []byte
+}
+
+type Config struct {
+	Username string
+	Password string
+	APIKey   string
+	BaseURL  string
+	Doer     Doer
+	Log      log.Logger
+}
+
+type Doer interface {
+	Do(*http.Request) (*http.Response, error)
+}
+
+type DefaultClient struct {
+	config Config
 }
 
 type Client interface {
@@ -19,14 +39,6 @@ type Client interface {
 type HTTPStatus struct {
 	StatusCode int
 	Entity     []byte
-}
-
-type DefaultClient struct {
-	user     string
-	password string
-	apiKey   string
-	url      string
-	client   *http.Client
 }
 
 type LocalRepositoryConfiguration struct {

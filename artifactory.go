@@ -2,7 +2,6 @@ package artifactory
 
 import (
 	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,27 +9,9 @@ import (
 	"time"
 )
 
-func NewApiKeyClient(apiKey, url string, tlsConfig *tls.Config) Client {
-	transport := &http.Transport{TLSClientConfig: tlsConfig}
+func NewClient(config Config) Client {
 	return DefaultClient{
-		apiKey: apiKey,
-		url:    url,
-		client: &http.Client{
-			Timeout:   10 * time.Second,
-			Transport: transport,
-		},
-	}
-}
-
-func NewBasicAuthClient(username, password, url string, tlsConfig *tls.Config) Client {
-	return DefaultClient{
-		user:     username,
-		password: password,
-		url:      url,
-		client: &http.Client{
-			Timeout:   10 * time.Second,
-			Transport: &http.Transport{TLSClientConfig: tlsConfig},
-		},
+		config: config,
 	}
 }
 
@@ -52,20 +33,16 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 		return &HTTPStatus{}, err
 	}
 
-	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/api/repositories/%s", c.url, repositoryID), bytes.NewBuffer(serial))
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, repositoryID), bytes.NewBuffer(serial))
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
+	c.setAuthHeaders(req)
 
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Content-type", "application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json")
-	if c.apiKey != "" {
-		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
-	} else {
-		req.SetBasicAuth(c.user, c.password)
-	}
 
-	response, err := c.client.Do(req)
+	response, err := c.config.Doer.Do(req)
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
@@ -83,23 +60,17 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 	return nil, nil
 }
 
-// GetVirtualRepositoryConfiguration retrieves virtual repository configuration.  Whether an error is returned or not
-// is driven by whether a retry framework shuuld retry such a call.
 func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (VirtualRepositoryConfiguration, error) {
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/repositories/%s", c.url, repositoryID), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, repositoryID), nil)
 	if err != nil {
 		return VirtualRepositoryConfiguration{}, err
 	}
+	c.setAuthHeaders(req)
 
 	req.Header.Set("Accept", "application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json")
-	if c.apiKey != "" {
-		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
-	} else {
-		req.SetBasicAuth(c.user, c.password)
-	}
 
-	response, err := c.client.Do(req)
+	response, err := c.config.Doer.Do(req)
 	if err != nil {
 		return VirtualRepositoryConfiguration{}, err
 	}
@@ -125,19 +96,15 @@ func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (V
 
 func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) {
 
-	req, err := http.NewRequest("HEAD", fmt.Sprintf("%s/api/repositories/%s", c.url, repositoryID), nil)
+	req, err := http.NewRequest("HEAD", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, repositoryID), nil)
 	if err != nil {
 		return false, err
 	}
 
 	req.Header.Set("Accept", "application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json")
-	if c.apiKey != "" {
-		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
-	} else {
-		req.SetBasicAuth(c.user, c.password)
-	}
+	c.setAuthHeaders(req)
 
-	response, err := c.client.Do(req)
+	response, err := c.config.Doer.Do(req)
 	if err != nil {
 		return false, err
 	}
@@ -156,18 +123,13 @@ func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) 
 }
 
 func (c DefaultClient) RemoveRepository(repositoryID string) (*HTTPStatus, error) {
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/api/repositories/%s", c.url, repositoryID), nil)
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, repositoryID), nil)
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
+	c.setAuthHeaders(req)
 
-	if c.apiKey != "" {
-		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
-	} else {
-		req.SetBasicAuth(c.user, c.password)
-	}
-
-	response, err := c.client.Do(req)
+	response, err := c.config.Doer.Do(req)
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
@@ -194,18 +156,13 @@ func (c DefaultClient) RemoveItemFromRepository(repositoryID, item string) (*HTT
 		panic("Refusing to remove an item of zero length.")
 	}
 
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/api/repositories/%s/%s", c.url, repositoryID, item), nil)
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/api/repositories/%s/%s", c.config.BaseURL, repositoryID, item), nil)
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
+	c.setAuthHeaders(req)
 
-	if c.apiKey != "" {
-		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
-	} else {
-		req.SetBasicAuth(c.user, c.password)
-	}
-
-	response, err := c.client.Do(req)
+	response, err := c.config.Doer.Do(req)
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
@@ -292,19 +249,16 @@ func (c DefaultClient) updateVirtualRepository(r VirtualRepositoryConfiguration)
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/repositories/%s", c.url, r.Key), bytes.NewBuffer(serial))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, r.Key), bytes.NewBuffer(serial))
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
+	c.setAuthHeaders(req)
+
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Content-type", "application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json")
-	if c.apiKey != "" {
-		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
-	} else {
-		req.SetBasicAuth(c.user, c.password)
-	}
 
-	response, err := c.client.Do(req)
+	response, err := c.config.Doer.Do(req)
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
@@ -319,4 +273,12 @@ func (c DefaultClient) updateVirtualRepository(r VirtualRepositoryConfiguration)
 		return &HTTPStatus{response.StatusCode, data}, nil
 	}
 	return nil, nil
+}
+
+func (c DefaultClient) setAuthHeaders(req *http.Request) {
+	if c.config.APIKey != "" {
+		req.Header.Set("X-JFrog-Art-Api", c.config.APIKey)
+	} else {
+		req.SetBasicAuth(c.config.Username, c.config.Password)
+	}
 }
