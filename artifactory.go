@@ -38,7 +38,7 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 	repoConfig := LocalRepositoryConfiguration{
 		Key:                     repositoryID,
 		RClass:                  "local",
-		Notes:                   "Created via automation with Artifactory Go client",
+		Notes:                   "Created via automation with Artifactory Go client [" + time.Now().String() + "]",
 		PackageType:             "maven",
 		RepoLayoutRef:           "maven-2-default",
 		HandleSnapshots:         true,
