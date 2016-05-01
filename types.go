@@ -8,9 +8,8 @@ type http500 struct {
 
 type Client interface {
 	CreateSnapshotRepository(string) (*HTTPStatus, error)
-	GetVirtualRepositoryConfiguration(string) (VirtualRepositoryConfiguration, error)
 	LocalRepositoryExists(string) (bool, error)
-	LocalRepositoryIsInGroup(string, string) (BooleanResponse, error)
+	GetVirtualRepositoryConfiguration(string) (VirtualRepositoryConfiguration, error)
 	AddLocalRepositoryToGroup(string, string) (*HTTPStatus, error)
 	RemoveLocalRepositoryFromGroup(string, string) (*HTTPStatus, error)
 }

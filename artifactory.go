@@ -150,28 +150,7 @@ func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) 
 		return false, http500{}
 	}
 
-	if response.StatusCode != 200 {
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func (c DefaultClient) LocalRepositoryIsInGroup(virtualRepositoryID, localRepositoryID string) (BooleanResponse, error) {
-	config, err := c.GetVirtualRepositoryConfiguration(virtualRepositoryID)
-	if err != nil {
-		return BooleanResponse{}, err
-	}
-	if config.HTTPStatus != nil {
-		return BooleanResponse{}, fmt.Errorf("%+v\n", config.HTTPStatus)
-	}
-
-	for _, k := range config.Repositories {
-		if k == localRepositoryID {
-			return BooleanResponse{Result: true}, nil
-		}
-	}
-	return BooleanResponse{Result: false}, nil
+	return response.StatusCode == 200, nil
 }
 
 func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
