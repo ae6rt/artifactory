@@ -57,7 +57,7 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 		return &HTTPStatus{}, err
 	}
 
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Content-type", "application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json")
 	if c.apiKey != "" {
 		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
@@ -220,7 +220,7 @@ func (c DefaultClient) updateVirtualRepository(r VirtualRepositoryConfiguration)
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
-	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Accept", "*/*")
 	req.Header.Set("Content-type", "application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json")
 	if c.apiKey != "" {
 		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
