@@ -154,6 +154,31 @@ func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) 
 	return response.StatusCode == 200, nil
 }
 
+func (c DefaultClient) RemoveSnapshotRepository(repositoryID string) (*HTTPStatus, error) {
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/api/repositories/%s", c.url, repositoryID), nil)
+	if err != nil {
+		return &HTTPStatus{}, err
+	}
+
+	if c.apiKey != "" {
+		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
+	} else {
+		req.SetBasicAuth(c.user, c.password)
+	}
+
+	response, err := c.client.Do(req)
+	if err != nil {
+		return &HTTPStatus{}, err
+	}
+	defer response.Body.Close()
+
+	if response.StatusCode/100 == 5 {
+		return &HTTPStatus{}, http500{}
+	}
+
+	return nil, nil
+}
+
 func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
 	r, err := c.GetVirtualRepositoryConfiguration(virtualRepositoryID)
 	if err != nil {

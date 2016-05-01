@@ -16,7 +16,7 @@ func TestCreateSnapshot(t *testing.T) {
 		if url.Path != "/api/repositories/test-repo" {
 			t.Fatalf("want /api/repositories/test-repo but found %s\n", url.Path)
 		}
-		if r.Header.Get("Accept") != "application/json" {
+		if r.Header.Get("Accept") != "*/*" {
 			t.Fatalf("want application/json but got %s\n", r.Header.Get("Accept"))
 		}
 		if r.Header.Get("Content-type") != "application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json" {
@@ -29,7 +29,7 @@ func TestCreateSnapshot(t *testing.T) {
 	}))
 	defer testServer.Close()
 
-	client := NewClient("u", "p", testServer.URL, &tls.Config{})
+	client := NewBasicAuthClient("u", "p", testServer.URL, &tls.Config{})
 	_, err := client.CreateSnapshotRepository("test-repo")
 	if err != nil {
 		t.Fatal(err)
