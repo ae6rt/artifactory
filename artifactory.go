@@ -193,6 +193,40 @@ func (c DefaultClient) RemoveRepository(repositoryID string) (*HTTPStatus, error
 	return nil, nil
 }
 
+func (c DefaultClient) RemoveItemFromRepository(repositoryID, item string) (*HTTPStatus, error) {
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/api/repositories/%s/%s", c.url, repositoryID, item), nil)
+	if err != nil {
+		return &HTTPStatus{}, err
+	}
+
+	if c.apiKey != "" {
+		req.Header.Set("X-JFrog-Art-Api", c.apiKey)
+	} else {
+		req.SetBasicAuth(c.user, c.password)
+	}
+
+	response, err := c.client.Do(req)
+	if err != nil {
+		return &HTTPStatus{}, err
+	}
+	defer response.Body.Close()
+
+	data, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode/100 == 5 {
+		return &HTTPStatus{StatusCode: response.StatusCode, Entity: data}, http500{data}
+	}
+
+	if response.StatusCode != 200 {
+		return &HTTPStatus{response.StatusCode, data}, nil
+	}
+
+	return nil, nil
+}
+
 func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
 	r, err := c.GetVirtualRepositoryConfiguration(virtualRepositoryID)
 	if err != nil {

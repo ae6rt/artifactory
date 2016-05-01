@@ -13,6 +13,7 @@ type Client interface {
 	GetVirtualRepositoryConfiguration(string) (VirtualRepositoryConfiguration, error)
 	AddLocalRepositoryToGroup(string, string) (*HTTPStatus, error)
 	RemoveLocalRepositoryFromGroup(string, string) (*HTTPStatus, error)
+	RemoveItemFromRepository(string, string) (*HTTPStatus, error)
 }
 
 type HTTPStatus struct {
