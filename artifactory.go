@@ -146,15 +146,20 @@ func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) 
 		return false, err
 	}
 	defer response.Body.Close()
+	data, err := ioutil.ReadAll(response.Body)
+
+	if err != nil {
+		return false, err
+	}
 
 	if response.StatusCode/100 == 5 {
-		return false, http500{}
+		return false, http500{data}
 	}
 
 	return response.StatusCode == 200, nil
 }
 
-func (c DefaultClient) RemoveSnapshotRepository(repositoryID string) (*HTTPStatus, error) {
+func (c DefaultClient) RemoveRepository(repositoryID string) (*HTTPStatus, error) {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/api/repositories/%s", c.url, repositoryID), nil)
 	if err != nil {
 		return &HTTPStatus{}, err
@@ -172,8 +177,17 @@ func (c DefaultClient) RemoveSnapshotRepository(repositoryID string) (*HTTPStatu
 	}
 	defer response.Body.Close()
 
+	data, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
 	if response.StatusCode/100 == 5 {
-		return &HTTPStatus{}, http500{}
+		return &HTTPStatus{StatusCode: response.StatusCode, Entity: data}, http500{data}
+	}
+
+	if response.StatusCode != 200 {
+		return &HTTPStatus{response.StatusCode, data}, nil
 	}
 
 	return nil, nil
