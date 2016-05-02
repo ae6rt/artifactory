@@ -9,12 +9,15 @@ import (
 	"time"
 )
 
+// NewClient returns a new Artifactory client with the given Config
 func NewClient(config Config) Client {
 	return DefaultClient{
 		config: config,
 	}
 }
 
+// CreateSnapshotRepository creates a snapshot repository with the given ID.  If the repository creation failed for reasons of transport failure,
+// an error is returned.  If the repository creation failed for other business reasons, *HTTPStatus will have the details.
 func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatus, error) {
 	repoConfig := LocalRepositoryConfiguration{
 		Key:                     repositoryID,
