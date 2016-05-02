@@ -15,7 +15,7 @@ type Config struct {
 	APIKey   string
 	BaseURL  string
 	Doer     Doer
-	Log      log.Logger
+	Log      *log.Logger
 }
 
 type Doer interface {
