@@ -14,7 +14,7 @@ func TestAdd(t *testing.T) {
 func TestRemove(t *testing.T) {
 	var arr []string
 
-	arr = remove([]string{"a", "b"}, "a")
+	arr = remove([]string{"a", "b", "a"}, "a")
 	if len(arr) != 1 {
 		t.Fatalf("Expecting 1 but got %d\n", len(arr))
 	}

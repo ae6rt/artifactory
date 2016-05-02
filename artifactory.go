@@ -245,12 +245,13 @@ func contains(arr []string, value string) bool {
 	return false
 }
 
-func remove(arr []string, value string) []string {
+func remove(arr []string, removeIt string) []string {
 	var t []string
 	for _, v := range arr {
-		if v != value {
-			t = append(t, v)
+		if v == removeIt {
+			continue
 		}
+		t = append(t, v)
 	}
 	return t
 }
