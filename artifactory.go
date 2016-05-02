@@ -63,6 +63,7 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 	return nil, nil
 }
 
+// GetVirtualRepositoryConfiguration returns the configuration of the given virtual repository.
 func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (VirtualRepositoryConfiguration, error) {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, repositoryID), nil)
@@ -97,6 +98,7 @@ func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (V
 	return virtualRepository, err
 }
 
+// LocalRepositoryExists returns whether the given local repository exists.
 func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) {
 
 	req, err := http.NewRequest("HEAD", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, repositoryID), nil)
@@ -125,6 +127,7 @@ func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) 
 	return response.StatusCode == 200, nil
 }
 
+// RemoveRepository removes the given repository.  Check error for transport or marshaling errors.  Check HTTPStatus for other business errors.
 func (c DefaultClient) RemoveRepository(repositoryID string) (*HTTPStatus, error) {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, repositoryID), nil)
 	if err != nil {
@@ -154,6 +157,8 @@ func (c DefaultClient) RemoveRepository(repositoryID string) (*HTTPStatus, error
 	return nil, nil
 }
 
+// RemoveItemFromRepository removes the given item from a repository.  Check error for transport or marshaling errors.
+// Check HTTPStatus for other business errors.
 func (c DefaultClient) RemoveItemFromRepository(repositoryID, item string) (*HTTPStatus, error) {
 	if item == "" {
 		panic("Refusing to remove an item of zero length.")
@@ -187,6 +192,8 @@ func (c DefaultClient) RemoveItemFromRepository(repositoryID, item string) (*HTT
 	return nil, nil
 }
 
+// AddLocalRepositoryToGroup adds the given local repository to a virtual repository.  Check error for transport or marshaling errors.
+// Check HTTPStatus for other business errors.
 func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
 	r, err := c.GetVirtualRepositoryConfiguration(virtualRepositoryID)
 	if err != nil {
@@ -205,6 +212,8 @@ func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepos
 	return c.updateVirtualRepository(r)
 }
 
+// RemoveLocalRepositoryFromGroup removes the given local repository to a virtual repository.  Check error for transport or marshaling errors.
+// Check HTTPStatus for other business errors.
 func (c DefaultClient) RemoveLocalRepositoryFromGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
 	r, err := c.GetVirtualRepositoryConfiguration(virtualRepositoryID)
 	if err != nil {
