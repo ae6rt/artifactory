@@ -237,7 +237,7 @@ func remove(arr []string, value string) []string {
 	var t []string
 	for _, v := range arr {
 		if v != value {
-			t = append(t, value)
+			t = append(t, v)
 		}
 	}
 	return t
