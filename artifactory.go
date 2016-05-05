@@ -271,7 +271,7 @@ func (c DefaultClient) updateVirtualRepository(r VirtualRepositoryConfiguration)
 
 	req.Header.Set("Accept", "*/*")
 	// The Content-type prescribed by the API docs doesn't work:  https://www.jfrog.com/jira/browse/RTFACT-10035?filter=-2
-	req.Header.Set("Content-type", "application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json")
+	req.Header.Set("Content-type", "application/json")
 
 	response, err := c.config.Doer.Do(req)
 	if err != nil {
