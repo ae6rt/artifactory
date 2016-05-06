@@ -100,7 +100,7 @@ func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (V
 // LocalRepositoryExists returns whether the given local repository exists.
 func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) {
 
-	// https://www.jfrog.com/jira/browse/RTFACT-9998?filter=-2
+	// https://www.jfrog.com/jira/browse/RTFACT-9998
 	req, err := http.NewRequest("HEAD", c.config.BaseURL+"/api/repositories/"+repositoryID, nil)
 	if err != nil {
 		return false, err
@@ -269,7 +269,7 @@ func (c DefaultClient) updateVirtualRepository(r VirtualRepositoryConfiguration)
 	c.setAuthHeaders(req)
 
 	req.Header.Set("Accept", "*/*")
-	// The Content-type prescribed by the API docs doesn't work:  https://www.jfrog.com/jira/browse/RTFACT-10035?filter=-2
+	// The Content-type prescribed by the API docs doesn't work:  https://www.jfrog.com/jira/browse/RTFACT-10035
 	req.Header.Set("Content-type", "application/json")
 
 	response, err := c.config.Doer.Do(req)
