@@ -3,7 +3,6 @@ package artifactory
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -36,7 +35,7 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 		return &HTTPStatus{}, err
 	}
 
-	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, repositoryID), bytes.NewBuffer(serial))
+	req, err := http.NewRequest("PUT", c.config.BaseURL+"/api/repositories/"+repositoryID, bytes.NewBuffer(serial))
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
@@ -66,7 +65,7 @@ func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatu
 // GetVirtualRepositoryConfiguration returns the configuration of the given virtual repository.
 func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (VirtualRepositoryConfiguration, error) {
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, repositoryID), nil)
+	req, err := http.NewRequest("GET", c.config.BaseURL+"/api/repositories/"+repositoryID, nil)
 	if err != nil {
 		return VirtualRepositoryConfiguration{}, err
 	}
@@ -102,7 +101,7 @@ func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (V
 func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) {
 
 	// https://www.jfrog.com/jira/browse/RTFACT-9998?filter=-2
-	req, err := http.NewRequest("HEAD", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, repositoryID), nil)
+	req, err := http.NewRequest("HEAD", c.config.BaseURL+"/api/repositories/"+repositoryID, nil)
 	if err != nil {
 		return false, err
 	}
@@ -130,7 +129,7 @@ func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) 
 
 // RemoveRepository removes the given repository.  Check error for transport or marshaling errors.  Check HTTPStatus for other business errors.
 func (c DefaultClient) RemoveRepository(repositoryID string) (*HTTPStatus, error) {
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, repositoryID), nil)
+	req, err := http.NewRequest("DELETE", c.config.BaseURL+"/api/repositories/"+repositoryID, nil)
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
@@ -165,7 +164,7 @@ func (c DefaultClient) RemoveItemFromRepository(repositoryID, item string) (*HTT
 		panic("Refusing to remove an item of zero length.")
 	}
 
-	req, err := http.NewRequest("DELETE", fmt.Sprintf("%s/api/repositories/%s/%s", c.config.BaseURL, repositoryID, item), nil)
+	req, err := http.NewRequest("DELETE", c.config.BaseURL+"/api/repositories/"+repositoryID+"/"+item, nil)
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
@@ -263,7 +262,7 @@ func (c DefaultClient) updateVirtualRepository(r VirtualRepositoryConfiguration)
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/api/repositories/%s", c.config.BaseURL, r.Key), bytes.NewBuffer(serial))
+	req, err := http.NewRequest("POST", c.config.BaseURL+"/api/repositories/"+r.Key, bytes.NewBuffer(serial))
 	if err != nil {
 		return &HTTPStatus{}, err
 	}
