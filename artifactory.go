@@ -3,6 +3,7 @@ package artifactory
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -73,13 +74,23 @@ func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (V
 
 	req.Header.Set("Accept", "application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json")
 
-	response, err := c.config.Doer.Do(req)
-	if err != nil {
-		return VirtualRepositoryConfiguration{}, err
-	}
-	defer response.Body.Close()
+	var data []byte
+	var response *http.Response
+	work := func() error {
+		var err error
+		response, err = c.config.Doer.Do(req)
+		if err != nil {
+			return err
+		}
+		defer response.Body.Close()
 
-	data, err := ioutil.ReadAll(response.Body)
+		if data, err = ioutil.ReadAll(response.Body); err != nil {
+			return err
+		}
+		return nil
+	}
+	err = retry(3, work)
+
 	if err != nil {
 		return VirtualRepositoryConfiguration{}, err
 	}
@@ -295,4 +306,20 @@ func (c DefaultClient) setAuthHeaders(req *http.Request) {
 	} else {
 		req.SetBasicAuth(c.config.Username, c.config.Password)
 	}
+}
+
+func retry(attempts int, callback func() error) (err error) {
+	for i := 0; ; i++ {
+		err = callback()
+		if err == nil {
+			return nil
+		}
+
+		if i >= (attempts - 1) {
+			break
+		}
+
+		time.Sleep(2 * time.Second)
+	}
+	return fmt.Errorf("retrying failed after %d attempts, last error: %s", attempts, err)
 }
