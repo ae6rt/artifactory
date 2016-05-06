@@ -294,6 +294,10 @@ func (c DefaultClient) updateVirtualRepository(r VirtualRepositoryConfiguration)
 		return nil, err
 	}
 
+	if response.StatusCode/100 == 5 {
+		return &HTTPStatus{StatusCode: response.StatusCode}, http500{data}
+	}
+
 	if response.StatusCode != 200 {
 		return &HTTPStatus{response.StatusCode, data}, nil
 	}
