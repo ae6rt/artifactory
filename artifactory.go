@@ -1,329 +1,318 @@
+// Copyright 2013 The go-github AUTHORS. All rights reserved.
+//
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+// Client API model based on:  https://github.com/google/go-github/blob/master/github/repos.go
+
 package artifactory
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
-	"time"
+	"net/url"
+	"strings"
+	"sync"
 )
 
-// NewClient returns a new Artifactory client with the given Config
-func NewClient(config Config) Client {
-	return DefaultClient{
-		config: config,
-	}
+const (
+	libraryVersion = "0.1"
+	userAgent      = "Xoom Artifactory Go SDK"
+	defaultBaseURL = "https://artifactory.example.com"
+)
+
+type LocalRepositoryConfiguration struct {
+	Key                     string `json:"key"`
+	RClass                  string `json:"rclass"`
+	Notes                   string `json:"notes"`
+	PackageType             string `json:"packageType"`
+	Description             string `json:"description"`
+	RepoLayoutRef           string `json:"repoLayoutRef"`
+	HandleSnapshots         bool   `json:"handleSnapshots"`
+	HandleReleases          bool   `json:"handleReleases"`
+	MaxUniqueSnapshots      int    `json:"maxUniqueSnapshots"`
+	SnapshotVersionBehavior string `json:"snapshotVersionBehavior"`
 }
 
-// CreateSnapshotRepository creates a snapshot repository with the given ID.  If the repository creation failed for reasons of transport failure,
-// an error is returned.  If the repository creation failed for other business reasons, *HTTPStatus will have the details.
-func (c DefaultClient) CreateSnapshotRepository(repositoryID string) (*HTTPStatus, error) {
-	repoConfig := LocalRepositoryConfiguration{
-		Key:                     repositoryID,
-		RClass:                  "local",
-		Notes:                   "Created via automation with https://github.com/ae6rt/artifactory Go client [" + time.Now().String() + "]",
-		PackageType:             "maven",
-		RepoLayoutRef:           "maven-2-default",
-		HandleSnapshots:         true,
-		HandleReleases:          false,
-		MaxUniqueSnapshots:      0,
-		SnapshotVersionBehavior: "unique",
+type VirtualRepositoryConfiguration struct {
+	Key           string   `json:"key"`
+	RClass        string   `json:"rclass"`
+	Repositories  []string `json:"repositories"`
+	PackageType   string   `json:"packageType"`
+	RepoLayoutRef string   `json:"repoLayoutRef"`
+}
+
+/*
+An Error reports more details on an individual error in an ErrorResponse.
+These are the possible validation error codes:
+
+    missing:
+	        resource does not exist
+			    missing_field:
+				        a required field on a resource has not been set
+						    invalid:
+							        the formatting of a field is invalid
+									    already_exists:
+										        another resource has the same valid as this field
+
+												GitHub API docs: http://developer.github.com/v3/#client-errors
+*/
+type Error struct {
+	Resource string `json:"resource"` // resource on which the error occurred
+	Field    string `json:"field"`    // field on which the error occurred
+	Code     string `json:"code"`     // validation error code
+}
+
+type Response struct {
+	*http.Response
+
+	//NextPage  int
+	//PrevPage  int
+	////FirstPage int
+	//LastPage  int
+
+	//Rate
+}
+
+type RepositoryService struct {
+	client *Client
+}
+
+type Client struct {
+	client            *http.Client
+	BaseURL           *url.URL
+	RepositoryService *RepositoryService
+	UserAgent         string
+
+	rateMu sync.Mutex
+	//rateLimits [categories]Rate // Rate limits for the client as determined by the most recent API calls.
+	//mostRecent rateLimitCategory
+}
+
+func NewClient(httpClient *http.Client) *Client {
+	if httpClient == nil {
+		httpClient = http.DefaultClient
 	}
+	b, _ := url.Parse(defaultBaseURL)
 
-	serial, err := json.Marshal(&repoConfig)
-	if err != nil {
-		return &HTTPStatus{}, err
-	}
+	c := &Client{client: httpClient, BaseURL: b, UserAgent: userAgent}
+	c.RepositoryService = &RepositoryService{client: c}
+	return c
+}
 
-	req, err := http.NewRequest("PUT", c.config.BaseURL+"/api/repositories/"+repositoryID, bytes.NewBuffer(serial))
-	if err != nil {
-		return &HTTPStatus{}, err
-	}
-	c.setAuthHeaders(req)
-
-	req.Header.Set("Accept", "*/*")
-	req.Header.Set("Content-type", "application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json")
-
-	response, err := c.config.Doer.Do(req)
-	if err != nil {
-		return &HTTPStatus{}, err
-	}
-	defer response.Body.Close()
-
-	data, err := ioutil.ReadAll(response.Body)
+func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Request, error) {
+	rel, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
 	}
 
-	if response.StatusCode != 200 {
-		return &HTTPStatus{StatusCode: response.StatusCode, Entity: data}, nil
+	u := c.BaseURL.ResolveReference(rel)
+
+	var buf io.ReadWriter
+	if body != nil {
+		buf = new(bytes.Buffer)
+		err := json.NewEncoder(buf).Encode(body)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return nil, nil
+	req, err := http.NewRequest(method, u.String(), buf)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Accept", strings.Join([]string{
+		"application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json",
+		"application/vnd.org.jfrog.artifactory.repositories.RemoteRepositoryConfiguration+json",
+		"application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json",
+		"*/*"},
+		","))
+	if c.UserAgent != "" {
+		req.Header.Add("User-Agent", c.UserAgent)
+	}
+
+	return req, nil
 }
 
-// GetVirtualRepositoryConfiguration returns the configuration of the given virtual repository.
-func (c DefaultClient) GetVirtualRepositoryConfiguration(repositoryID string) (VirtualRepositoryConfiguration, error) {
-
-	req, err := http.NewRequest("GET", c.config.BaseURL+"/api/repositories/"+repositoryID, nil)
+func (c *RepositoryService) CreateLocal(repoConfig *LocalRepositoryConfiguration) (*LocalRepositoryConfiguration, *Response, error) {
+	u := fmt.Sprintf("api/repositories/%s", repoConfig.Key)
+	req, err := c.client.NewRequest("PUT", u, repoConfig)
 	if err != nil {
-		return VirtualRepositoryConfiguration{}, err
+		return nil, nil, err
 	}
-	c.setAuthHeaders(req)
 
-	req.Header.Set("Accept", "application/vnd.org.jfrog.artifactory.repositories.VirtualRepositoryConfiguration+json")
+	p := new(LocalRepositoryConfiguration)
+	resp, err := c.client.Do(req, p)
+	if err != nil {
+		return nil, resp, err
+	}
 
-	var data []byte
-	var response *http.Response
-	work := func() error {
-		var err error
-		response, err = c.config.Doer.Do(req)
-		if err != nil {
-			return err
+	return p, resp, err
+}
+
+/*
+ repoConfig := LocalRepositoryConfiguration{
+        Key:                     repositoryID,
+        RClass:                  "local",
+        Notes:                   "Created via automation with https://github.com/ae6rt/artifactory Go client [" + time.Now().String() + "]",
+        PackageType:             "maven",
+        RepoLayoutRef:           "maven-2-default",
+        HandleSnapshots:         true,
+        HandleReleases:          false,
+        MaxUniqueSnapshots:      0,
+        SnapshotVersionBehavior: "unique",
+    }
+
+    serial, err := json.Marshal(&repoConfig)
+    if err != nil {
+        return &HTTPStatus{}, err
+    }
+
+    req, err := http.NewRequest("PUT", c.config.BaseURL+"/api/repositories/"+repositoryID, bytes.NewBuffer(serial))
+    if err != nil {
+        return &HTTPStatus{}, err
+    }
+    c.setAuthHeaders(req)
+
+    req.Header.Set("Accept", "* / *")
+    req.Header.Set("Content-type", "application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json")
+
+	response, err := c.config.Doer.Do(req)
+    if err != nil {
+        return &HTTPStatus{}, err
+    }
+    defer response.Body.Close()
+
+    data, err := ioutil.ReadAll(response.Body)
+    if err != nil {
+        return nil, err
+    }
+
+    if response.StatusCode != 200 {
+        return &HTTPStatus{StatusCode: response.StatusCode, Entity: data}, nil
+    }
+
+    return nil, nil
+*/
+
+// Do sends an API request and returns the API response.  The API response is
+// JSON decoded and stored in the value pointed to by v, or returned as an
+// error if an API error has occurred.  If v implements the io.Writer
+// interface, the raw response body will be written to v, without attempting to
+// first decode it.  If rate limit is exceeded and reset time is in the future,
+// Do returns *RateLimitError immediately without making a network API call.
+func (c *Client) Do(req *http.Request, v interface{}) (*Response, error) {
+	//	rateLimitCategory := category(req.URL.Path)
+
+	// If we've hit rate limit, don't make further requests before Reset time.
+	//if err := c.checkRateLimitBeforeDo(req, rateLimitCategory); err != nil {
+	//return nil, err
+	//}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		// Drain up to 512 bytes and close the body to let the Transport reuse the connection
+		io.CopyN(ioutil.Discard, resp.Body, 512)
+		resp.Body.Close()
+	}()
+
+	response := newResponse(resp)
+
+	//	c.rateMu.Lock()
+	//c.rateLimits[rateLimitCategory] = response.Rate
+	//c.mostRecent = rateLimitCategory
+	//c.rateMu.Unlock()
+
+	err = CheckResponse(resp)
+	if err != nil {
+		// even though there was an error, we still return the response
+		// in case the caller wants to inspect it further
+		return response, err
+	}
+
+	if v != nil {
+		if w, ok := v.(io.Writer); ok {
+			io.Copy(w, resp.Body)
+		} else {
+			err = json.NewDecoder(resp.Body).Decode(v)
+			if err == io.EOF {
+				err = nil // ignore EOF errors caused by empty response body
+			}
 		}
-		defer response.Body.Close()
+	}
 
-		if data, err = ioutil.ReadAll(response.Body); err != nil {
-			return err
-		}
+	return response, err
+}
+
+// newResponse creates a new Response for the provided http.Response.
+func newResponse(r *http.Response) *Response {
+	response := &Response{Response: r}
+	//response.populatePageValues()
+	return response
+}
+
+// CheckResponse checks the API response for errors, and returns them if
+// present.  A response is considered an error if it has a status code outside
+// the 200 range.  API error responses are expected to have either no response
+// body, or a JSON response body that maps to ErrorResponse.  Any other
+// response body will be silently ignored.
+//
+// The error type will be *RateLimitError for rate limit exceeded errors,
+// and *TwoFactorAuthError for two-factor authentication errors.
+func CheckResponse(r *http.Response) error {
+	if c := r.StatusCode; 200 <= c && c <= 299 {
 		return nil
 	}
-	err = retry(3, work)
-
-	if err != nil {
-		return VirtualRepositoryConfiguration{}, err
+	errorResponse := &ErrorResponse{Response: r}
+	data, err := ioutil.ReadAll(r.Body)
+	if err == nil && data != nil {
+		json.Unmarshal(data, errorResponse)
 	}
-
-	if response.StatusCode/100 == 5 {
-		return VirtualRepositoryConfiguration{}, http500{data}
-	}
-
-	if response.StatusCode != 200 {
-		return VirtualRepositoryConfiguration{HTTPStatus: &HTTPStatus{StatusCode: response.StatusCode, Entity: data}}, nil
-	}
-
-	var virtualRepository VirtualRepositoryConfiguration
-	err = json.Unmarshal(data, &virtualRepository)
-	return virtualRepository, err
-}
-
-// LocalRepositoryExists returns whether the given local repository exists.
-func (c DefaultClient) LocalRepositoryExists(repositoryID string) (bool, error) {
-
-	// https://www.jfrog.com/jira/browse/RTFACT-9998
-	req, err := http.NewRequest("HEAD", c.config.BaseURL+"/api/repositories/"+repositoryID, nil)
-	if err != nil {
-		return false, err
-	}
-
-	req.Header.Set("Accept", "application/vnd.org.jfrog.artifactory.repositories.LocalRepositoryConfiguration+json")
-	c.setAuthHeaders(req)
-
-	response, err := c.config.Doer.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer response.Body.Close()
-
-	data, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return false, err
-	}
-
-	if response.StatusCode/100 == 5 {
-		return false, http500{data}
-	}
-
-	return response.StatusCode == 200, nil
-}
-
-// RemoveRepository removes the given repository.  Check error for transport or marshaling errors.  Check HTTPStatus for other business errors.
-func (c DefaultClient) RemoveRepository(repositoryID string) (*HTTPStatus, error) {
-	req, err := http.NewRequest("DELETE", c.config.BaseURL+"/api/repositories/"+repositoryID, nil)
-	if err != nil {
-		return &HTTPStatus{}, err
-	}
-	c.setAuthHeaders(req)
-
-	response, err := c.config.Doer.Do(req)
-	if err != nil {
-		return &HTTPStatus{}, err
-	}
-	defer response.Body.Close()
-
-	data, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if response.StatusCode/100 == 5 {
-		return &HTTPStatus{StatusCode: response.StatusCode, Entity: data}, http500{data}
-	}
-
-	if response.StatusCode != 200 {
-		return &HTTPStatus{response.StatusCode, data}, nil
-	}
-
-	return nil, nil
-}
-
-// RemoveItemFromRepository removes the given item from a repository.  Check error for transport or marshaling errors.
-// Check HTTPStatus for other business errors.
-func (c DefaultClient) RemoveItemFromRepository(repositoryID, item string) (*HTTPStatus, error) {
-	if item == "" {
-		panic("Refusing to remove an item of zero length.")
-	}
-
-	req, err := http.NewRequest("DELETE", c.config.BaseURL+"/api/repositories/"+repositoryID+"/"+item, nil)
-	if err != nil {
-		return &HTTPStatus{}, err
-	}
-	c.setAuthHeaders(req)
-
-	response, err := c.config.Doer.Do(req)
-	if err != nil {
-		return &HTTPStatus{}, err
-	}
-	defer response.Body.Close()
-
-	data, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if response.StatusCode/100 == 5 {
-		return &HTTPStatus{StatusCode: response.StatusCode, Entity: data}, http500{data}
-	}
-
-	if response.StatusCode != 200 {
-		return &HTTPStatus{response.StatusCode, data}, nil
-	}
-
-	return nil, nil
-}
-
-// AddLocalRepositoryToGroup adds the given local repository to a virtual repository.  Check error for transport or marshaling errors.
-// Check HTTPStatus for other business errors.
-func (c DefaultClient) AddLocalRepositoryToGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
-	r, err := c.GetVirtualRepositoryConfiguration(virtualRepositoryID)
-	if err != nil {
-		return nil, err
-	}
-	if r.HTTPStatus != nil {
-		return r.HTTPStatus, nil
-	}
-
-	if contains(r.Repositories, localRepositoryID) {
-		return nil, nil
-	}
-
-	r.Repositories = append(r.Repositories, localRepositoryID)
-
-	return c.updateVirtualRepository(r)
-}
-
-// RemoveLocalRepositoryFromGroup removes the given local repository to a virtual repository.  Check error for transport or marshaling errors.
-// Check HTTPStatus for other business errors.
-func (c DefaultClient) RemoveLocalRepositoryFromGroup(virtualRepositoryID, localRepositoryID string) (*HTTPStatus, error) {
-	r, err := c.GetVirtualRepositoryConfiguration(virtualRepositoryID)
-	if err != nil {
-		return nil, err
-	}
-	if r.HTTPStatus != nil {
-		return r.HTTPStatus, nil
-	}
-
-	if !contains(r.Repositories, localRepositoryID) {
-		return nil, nil
-	}
-
-	r.Repositories = remove(r.Repositories, localRepositoryID)
-
-	return c.updateVirtualRepository(r)
-}
-
-func (h http500) Error() string {
-	return string(h.httpEntity)
-}
-
-func contains(arr []string, value string) bool {
-	for _, v := range arr {
-		if v == value {
-			return true
-		}
-	}
-	return false
-}
-
-func remove(arr []string, removeIt string) []string {
-	var t []string
-	for _, v := range arr {
-		if v == removeIt {
-			continue
-		}
-		t = append(t, v)
-	}
-	return t
-}
-
-func (c DefaultClient) updateVirtualRepository(r VirtualRepositoryConfiguration) (*HTTPStatus, error) {
-	serial, err := json.Marshal(&r)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", c.config.BaseURL+"/api/repositories/"+r.Key, bytes.NewBuffer(serial))
-	if err != nil {
-		return &HTTPStatus{}, err
-	}
-	c.setAuthHeaders(req)
-
-	req.Header.Set("Accept", "*/*")
-	// The Content-type prescribed by the API docs doesn't work:  https://www.jfrog.com/jira/browse/RTFACT-10035
-	req.Header.Set("Content-type", "application/json")
-
-	response, err := c.config.Doer.Do(req)
-	if err != nil {
-		return &HTTPStatus{}, err
-	}
-	defer response.Body.Close()
-
-	data, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if response.StatusCode/100 == 5 {
-		return &HTTPStatus{StatusCode: response.StatusCode}, http500{data}
-	}
-
-	if response.StatusCode != 200 {
-		return &HTTPStatus{response.StatusCode, data}, nil
-	}
-	return nil, nil
-}
-
-func (c DefaultClient) setAuthHeaders(req *http.Request) {
-	if c.config.APIKey != "" {
-		req.Header.Set("X-JFrog-Art-Api", c.config.APIKey)
-	} else {
-		req.SetBasicAuth(c.config.Username, c.config.Password)
+	switch {
+	//case r.StatusCode == http.StatusUnauthorized && strings.HasPrefix(r.Header.Get(headerOTP), "required"):
+	/*
+		return (*TwoFactorAuthError)(errorResponse)
+			case r.StatusCode == http.StatusForbidden && r.Header.Get(headerRateRemaining) == "0" && strings.HasPrefix(errorResponse.Message, "API rate limit exceeded for "):
+				return &RateLimitError{
+					Rate:     parseRate(r),
+					Response: errorResponse.Response,
+					Message:  errorResponse.Message,
+				}
+	*/
+	default:
+		return errorResponse
 	}
 }
 
-func retry(attempts int, callback func() error) (err error) {
-	for i := 0; ; i++ {
-		err = callback()
-		if err == nil {
-			return nil
-		}
+/*
+An ErrorResponse reports one or more errors caused by an API request.
 
-		if i >= (attempts - 1) {
-			break
-		}
+GitHub API docs: http://developer.github.com/v3/#client-errors
+*/
+type ErrorResponse struct {
+	Response *http.Response // HTTP response that caused this error
+	Message  string         `json:"message"` // error message
+	Errors   []Error        `json:"errors"`  // more detail on individual errors
+	// Block is only populated on certain types of errors such as code 451.
+	// See https://developer.github.com/changes/2016-03-17-the-451-status-code-is-now-supported/
+	// for more information.
+	Block *struct {
+		Reason string `json:"reason,omitempty"`
+		//CreatedAt *Timestamp `json:"created_at,omitempty"`
+	} `json:"block,omitempty"`
+}
 
-		time.Sleep(2 * time.Second)
-	}
-	return fmt.Errorf("retrying failed after %d attempts, last error: %s", attempts, err)
+func (r *ErrorResponse) Error() string {
+	return fmt.Sprintf("%v %v: %d %v %+v",
+		r.Response.Request.Method, r.Response.Request.URL,
+		r.Response.StatusCode, r.Message, r.Errors)
 }
