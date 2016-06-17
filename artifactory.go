@@ -42,15 +42,31 @@ type RepositoryService struct {
 	PathPrefix string
 }
 
-func (c *RepositoryService) LocalConfiguration(repositoryKey string) (*LocalRepositoryConfiguration, *Response, error) {
-	u := fmt.Sprintf("%sapi/repositories/%s", c.PathPrefix, repositoryKey)
-	req, err := c.client.NewRequest("GET", u, nil)
+func (service *RepositoryService) LocalConfiguration(repositoryKey string) (*LocalRepositoryConfiguration, *Response, error) {
+	u := fmt.Sprintf("%sapi/repositories/%s", service.PathPrefix, repositoryKey)
+	req, err := service.client.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	p := new(LocalRepositoryConfiguration)
-	resp, err := c.client.Do(req, p)
+	resp, err := service.client.Do(req, p)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return p, resp, err
+}
+
+func (service *RepositoryService) VirtualConfiguration(repositoryKey string) (*VirtualRepositoryConfiguration, *Response, error) {
+	u := fmt.Sprintf("%sapi/repositories/%s", service.PathPrefix, repositoryKey)
+	req, err := service.client.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	p := new(VirtualRepositoryConfiguration)
+	resp, err := service.client.Do(req, p)
 	if err != nil {
 		return nil, resp, err
 	}
