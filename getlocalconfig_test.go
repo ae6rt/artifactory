@@ -20,5 +20,5 @@ func TestGetLocalConfiguration(t *testing.T) {
 	client := NewClient(c)
 	client.BaseURL, _ = url.Parse(testURL)
 	config, response, err := client.RepositoryService.LocalConfiguration("inftools-local")
-	fmt.Printf("%v, %v, %v\n", config, response, err)
+	fmt.Printf("%+v, %+v, %+v\n", config, response, err)
 }

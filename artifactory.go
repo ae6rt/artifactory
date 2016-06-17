@@ -10,9 +10,10 @@ package artifactory
 import "fmt"
 
 const (
-	libraryVersion = "0.1"
-	userAgent      = "Xoom Artifactory Go SDK"
-	defaultBaseURL = "https://artifactory.example.com"
+	libraryVersion    = "0.1"
+	userAgent         = "Xoom Artifactory Go SDK"
+	defaultBaseURL    = "https://artifactory.example.com"
+	defaultPathPrefix = "artifactory/"
 )
 
 type LocalRepositoryConfiguration struct {
@@ -37,11 +38,12 @@ type VirtualRepositoryConfiguration struct {
 }
 
 type RepositoryService struct {
-	client *Client
+	client     *Client
+	PathPrefix defaultPathPrefix
 }
 
 func (c *RepositoryService) LocalConfiguration(repositoryKey string) (*LocalRepositoryConfiguration, *Response, error) {
-	u := fmt.Sprintf("/artifactory/api/repositories/%s", repositoryKey)
+	u := fmt.Sprintf("%sapi/repositories/%s", c.PathPrefix, repositoryKey)
 	req, err := c.client.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil, nil, err

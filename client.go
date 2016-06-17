@@ -17,48 +17,36 @@ import (
 	"net/url"
 )
 
-/*
-   An ErrorResponse reports one or more errors caused by an API request.
-
-   GitHub API docs: http://developer.github.com/v3/#client-errors
-*/
+//   An ErrorResponse reports one or more errors caused by an API request.
 type ErrorResponse struct {
 	Response *http.Response // HTTP response that caused this error
-	Message  string         `json:"message"` // error message
-	Errors   []Error        `json:"errors"`  // more detail on individual errors
-	// Block is only populated on certain types of errors such as code 451.
-	// See https://developer.github.com/changes/2016-03-17-the-451-status-code-is-now-supported/
-	// for more information.
-	Block *struct {
-		Reason string `json:"reason,omitempty"`
-		//CreatedAt *Timestamp `json:"created_at,omitempty"`
-	} `json:"block,omitempty"`
+	Errors   []Error        `json:"errors"` // more detail on individual errors
 }
 
 func (r *ErrorResponse) Error() string {
-	return fmt.Sprintf("%v %v: %d %v %+v",
-		r.Response.Request.Method, r.Response.Request.URL,
-		r.Response.StatusCode, r.Message, r.Errors)
+	return fmt.Sprintf(
+		"%v %v: %d %+v",
+		r.Response.Request.Method,
+		r.Response.Request.URL,
+		r.Response.StatusCode,
+		r.Errors,
+	)
 }
 
 // An Error reports more details on an individual error in an ErrorResponse.
+// See https://www.jfrog.com/confluence/display/RTF/Artifactory+REST+API#ArtifactoryRESTAPI-ERRORRESPONSES
 type Error struct {
-	Resource string `json:"resource"` // resource on which the error occurred
-	Field    string `json:"field"`    // field on which the error occurred
-	Code     string `json:"code"`     // validation error code
+	Status  int    `json:"status"`
+	Message string `json:"message"`
 }
 
+// Response is a Artifactory API response.  This wraps the standard http.Response
+// returned from Artifactory.
 type Response struct {
 	*http.Response
-
-	//NextPage  int
-	//PrevPage  int
-	////FirstPage int
-	//LastPage  int
-
-	//Rate
 }
 
+// A Client manages communication with the Artifactory API.
 type Client struct {
 	client            *http.Client
 	BaseURL           *url.URL
@@ -66,6 +54,10 @@ type Client struct {
 	UserAgent         string
 }
 
+// NewClient returns a new Artifactory API client.  If a nil httpClient is
+// provided, http.DefaultClient will be used.  To use API methods which require
+// authentication, provide an http.Client that will perform the authentication
+// for you (such as that provided by the golang.org/x/oauth2 library).
 func NewClient(httpClient *http.Client) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
@@ -77,16 +69,18 @@ func NewClient(httpClient *http.Client) *Client {
 	return c
 }
 
+// NewRequest creates an API request. A relative URL can be provided in urlStr,
+// in which case it is resolved relative to the BaseURL of the Client.
+// Relative URLs should always be specified without a preceding slash.  If
+// specified, the value pointed to by body is JSON encoded and included as the
+// request body.
 func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Request, error) {
 	rel, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("@@@ %s base url\n", c.BaseURL.String())
-
 	u := c.BaseURL.ResolveReference(rel)
-	fmt.Printf("@@@ %s resolved url\n", u)
 
 	var buf io.ReadWriter
 	if body != nil {
@@ -124,8 +118,6 @@ func (c *Client) Do(req *http.Request, v interface{}) (*Response, error) {
 	}
 
 	defer func() {
-		// Drain up to 512 bytes and close the body to let the Transport reuse the connection
-		//	io.CopyN(ioutil.Discard, resp.Body, 512)
 		resp.Body.Close()
 	}()
 
@@ -154,7 +146,6 @@ func (c *Client) Do(req *http.Request, v interface{}) (*Response, error) {
 // newResponse creates a new Response for the provided http.Response.
 func newResponse(r *http.Response) *Response {
 	response := &Response{Response: r}
-	//response.populatePageValues()
 	return response
 }
 
@@ -175,18 +166,5 @@ func CheckResponse(r *http.Response) error {
 	if err == nil && data != nil {
 		json.Unmarshal(data, errorResponse)
 	}
-	switch {
-	//case r.StatusCode == http.StatusUnauthorized && strings.HasPrefix(r.Header.Get(headerOTP), "required"):
-	/*
-		        return (*TwoFactorAuthError)(errorResponse)
-				            case r.StatusCode == http.StatusForbidden && r.Header.Get(headerRateRemaining) == "0" && strings.HasPrefix(errorResponse.Message, "API rate limit exceeded for "):
-							                return &RateLimitError{
-											                    Rate:     parseRate(r),
-																                    Response: errorResponse.Response,
-																					                    Message:  errorResponse.Message,
-																										                }
-	*/
-	default:
-		return errorResponse
-	}
+	return errorResponse
 }
