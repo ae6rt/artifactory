@@ -39,7 +39,7 @@ type VirtualRepositoryConfiguration struct {
 
 type RepositoryService struct {
 	client     *Client
-	PathPrefix defaultPathPrefix
+	PathPrefix string
 }
 
 func (c *RepositoryService) LocalConfiguration(repositoryKey string) (*LocalRepositoryConfiguration, *Response, error) {

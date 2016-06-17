@@ -65,7 +65,7 @@ func NewClient(httpClient *http.Client) *Client {
 	b, _ := url.Parse(defaultBaseURL)
 
 	c := &Client{client: httpClient, BaseURL: b, UserAgent: userAgent}
-	c.RepositoryService = &RepositoryService{client: c}
+	c.RepositoryService = &RepositoryService{client: c, PathPrefix: defaultPathPrefix}
 	return c
 }
 
