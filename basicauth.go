@@ -2,6 +2,7 @@
 //
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 package artifactory
 
 import "net/http"
@@ -9,8 +10,8 @@ import "net/http"
 // BasicAuthTransport is an http.RoundTripper that authenticates all requests
 // using HTTP Basic Authentication with the provided username and password.
 type BasicAuthTransport struct {
-	Username string // GitHub username
-	Password string // GitHub password
+	Username string // Artifactory username
+	Password string // Artifactory password
 
 	// Transport is the underlying HTTP transport to use when making requests.
 	// It will default to http.DefaultTransport if nil.
