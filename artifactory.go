@@ -73,3 +73,61 @@ func (service *RepositoryService) VirtualConfiguration(repositoryKey string) (*V
 
 	return p, resp, err
 }
+
+func (service *RepositoryService) Remove(repositoryKey string) (*Response, error) {
+	u := fmt.Sprintf("%sapi/repositories/%s", service.PathPrefix, repositoryKey)
+	req, err := service.client.NewRequest("DELETE", u, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := service.client.Do(req, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, err
+}
+
+func (service *RepositoryService) AddToGroup(virtualRepositoryID, localRepositoryID string) (*Response, error) {
+	virtual, response, err := service.VirtualConfiguration(virtualRepositoryID)
+	if err != nil {
+		return response, err
+	}
+
+	if (response.StatusCode / 100) != 2 {
+		return response, nil
+	}
+
+	if contains(virtual.Repositories, localRepositoryID) {
+		return nil, nil
+	}
+
+	virtual.Repositories = append(virtual.Repositories, localRepositoryID)
+
+	return service.updateVirtualRepository(virtual)
+}
+
+func (service *RepositoryService) updateVirtualRepository(virtualRepository *VirtualRepositoryConfiguration) (*Response, error) {
+	panic("NYI")
+}
+
+func contains(arr []string, value string) bool {
+	for _, v := range arr {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
+
+func remove(arr []string, removeIt string) []string {
+	var t []string
+	for _, v := range arr {
+		if v == removeIt {
+			continue
+		}
+		t = append(t, v)
+	}
+	return t
+}
