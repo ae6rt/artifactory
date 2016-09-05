@@ -42,6 +42,8 @@ type RepositoryService struct {
 	PathPrefix string
 }
 
+// LocalConfiguration returns the configuration of the local repository named by repositoryKey.  The underlying HTTP Response is also
+// returned, as well as any error.
 func (service *RepositoryService) LocalConfiguration(repositoryKey string) (*LocalRepositoryConfiguration, *Response, error) {
 	u := fmt.Sprintf("%sapi/repositories/%s", service.PathPrefix, repositoryKey)
 	req, err := service.client.NewRequest("GET", u, nil)
@@ -58,6 +60,8 @@ func (service *RepositoryService) LocalConfiguration(repositoryKey string) (*Loc
 	return p, resp, err
 }
 
+// VirtualConfiguration returns the configuration for the virtual repository named by repositoryKey.  The underlying HTTP Response is also
+// returned, as well as any error.
 func (service *RepositoryService) VirtualConfiguration(repositoryKey string) (*VirtualRepositoryConfiguration, *Response, error) {
 	u := fmt.Sprintf("%sapi/repositories/%s", service.PathPrefix, repositoryKey)
 	req, err := service.client.NewRequest("GET", u, nil)
@@ -74,6 +78,7 @@ func (service *RepositoryService) VirtualConfiguration(repositoryKey string) (*V
 	return p, resp, err
 }
 
+// Remove removes the repository named by repositoryKey, and returns the underlying HTTP response and any error.
 func (service *RepositoryService) Remove(repositoryKey string) (*Response, error) {
 	u := fmt.Sprintf("%sapi/repositories/%s", service.PathPrefix, repositoryKey)
 	req, err := service.client.NewRequest("DELETE", u, nil)
@@ -89,6 +94,8 @@ func (service *RepositoryService) Remove(repositoryKey string) (*Response, error
 	return resp, err
 }
 
+// AddToGroup adds the local repository named by localRepositoryID to the virtual repository named by virtualRepositoryID.  The underlying HTTP response is also returned,
+// as well as any error.
 func (service *RepositoryService) AddToGroup(virtualRepositoryID, localRepositoryID string) (*Response, error) {
 	virtual, response, err := service.VirtualConfiguration(virtualRepositoryID)
 	if err != nil {

@@ -17,7 +17,7 @@ import (
 	"net/url"
 )
 
-//   An ErrorResponse reports one or more errors caused by an API request.
+// An ErrorResponse reports one or more errors caused by an API request.
 type ErrorResponse struct {
 	Response *http.Response // HTTP response that caused this error
 	Errors   []Error        `json:"errors"` // more detail on individual errors
