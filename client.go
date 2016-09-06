@@ -55,10 +55,10 @@ type Client struct {
 	UserAgent string
 }
 
-// NewBasicAuthClient creates an HTTP Basic Auth client with the given baseURL.
+// NewBasicAuthClient creates an HTTP Basic Auth client with the given baseURL, username and password
 func NewBasicAuthClient(baseURL, username, password string) (*Client, error) {
-	basicTransport := &BasicAuthTransport{Username: username, Password: password}
-	httpClient := basicTransport.Client()
+	transport := &BasicAuthTransport{Username: username, Password: password}
+	httpClient := transport.Client()
 	client := NewClient(httpClient)
 	url, err := url.Parse(baseURL)
 	if err != nil {
