@@ -51,7 +51,21 @@ type Client struct {
 	client            *http.Client
 	BaseURL           *url.URL
 	RepositoryService *RepositoryService
-	UserAgent         string
+
+	UserAgent string
+}
+
+// NewBasicAuthClient creates an HTTP Basic Auth client with the given baseURL.
+func NewBasicAuthClient(baseURL, username, password string) (*Client, error) {
+	basicTransport := &BasicAuthTransport{Username: username, Password: password}
+	httpClient := basicTransport.Client()
+	client := NewClient(httpClient)
+	url, err := url.Parse(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	client.BaseURL = url
+	return client, nil
 }
 
 // NewClient returns a new Artifactory API client.  If a nil httpClient is
